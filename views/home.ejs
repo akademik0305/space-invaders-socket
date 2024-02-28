@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple chat</title>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"
+    integrity="sha384-Gr6Lu2Ajx28mzwyVR8CFkULdCU7kMlZ9UthllibdOSo6qAiN+yXNHqtgdTvFXMT4"
+    crossorigin="anonymous"></script>
+
+  <style>
+    canvas {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+      top: 0;
+      left: 0;
+    }
+
+    .div {
+      position: relative;
+      background-color: #fff;
+      z-index: 5;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="div">
+    <input type="text" id="input">
+    <button onclick="sendMessage()">send message</button>
+    <h2 id="message">Nothing</h2>
+  </div>
+
+  <canvas></canvas>
+
+
+  <script>
+    const socket = io('http://localhost:3001')
+    socket.on('connection')
+
+    socket.on('message', (data) => {
+      document.getElementById('message').innerText = data
+    })
+
+    const sendMessage = () => {
+      const value = document.getElementById('input').value
+      socket.emit('message', value)
+    }
+
+    const canvas = document.querySelector('canvas')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    const c = canvas.getContext('2d')
+
+    class Player {
+      constructor() {
+        this.width = 30
+        this.height = 30
+        this.position = {
+          x: canvas.width / 2 - this.width / 2,
+          y: canvas.height - this.height - 30
+        }
+        this.velocity = {
+          x: 0,
+          y: 0
+        }
+        this.color = 'red'
+      }
+
+      draw() {
+        c.strokeStyle = this.color
+        c.fillStyle = this.color
+        c.beginPath()
+        c.moveTo(this.position.x + this.width / 2, this.position.y)
+        c.lineTo(this.position.x + this.width, this.position.y + this.height)
+        c.lineTo(this.position.x, this.position.y + this.height)
+        c.lineTo(this.position.x + this.width / 2, this.position.y)
+        c.stroke()
+        c.closePath()
+        // c.fillRect(this.position.x, this.position.y, this.width, this.height)
+      }
+
+      update() {
+        this.draw()
+        this.position.x += this.velocity.x
+        this.position.y += this.velocity.y
+      }
+
+    }
+
+
+    class Player2 {
+      constructor() {
+        this.width = 30
+        this.height = 30
+        this.position = {
+          x: canvas.width / 2 - this.width / 2,
+          y: this.height
+        }
+        this.velocity = {
+          x: 0,
+          y: 0
+        }
+        this.color = 'yellow'
+      }
+
+      draw() {
+        c.strokeStyle = this.color
+        c.fillStyle = this.color
+        c.beginPath()
+        c.moveTo(this.position.x, this.position.y)
+        c.lineTo(this.position.x + this.width, this.position.y)
+        c.lineTo(this.position.x + this.width / 2, this.position.y + this.height)
+        c.lineTo(this.position.x, this.position.y)
+        // c.lineTo(this.position.x, this.position.y + this.height)
+        // c.fill()
+        c.stroke()
+        c.closePath()
+      }
+
+      update(position) {
+        this.draw()
+        this.position.x = position.x
+        this.position.y = position.y - canvas.height + this.height + 60
+        // console.log(position.y - canvas.height + this.height + 60)
+      }
+
+    }
+
+    class Projectile {
+      constructor({position, velocity, color}) {
+        this.position = {
+          x: position.x,
+          y: position.y
+        }
+        this.velocity = {
+          x: velocity.x,
+          y: velocity.y
+        }
+        this.radius = 4
+        this.color = color
+      }
+
+      draw() {
+        c.fillStyle = this.color
+        c.beginPath()
+        c.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2, false)
+        c.closePath()
+        c.fill()
+      }
+
+      update() {
+        this.draw()
+        this.position.x += this.velocity.x
+        this.position.y += this.velocity.y
+      }
+    }
+
+    let player2
+    let projectiles = []
+    let enemyProjectiles = []
+
+    socket.on('new-user', (id) => {
+      player2 = new Player2
+    })
+
+    socket.on('updatePosition', (position) => {
+      // console.log(position)
+      // console.log(player2)
+      player2.update(position)
+      // c.clearRect(0, 0, canvas.width, canvas.height)
+    })
+
+    const player = new Player()
+
+
+
+    // listen enemy shooot
+    socket.on('shootEnemy', (projectile) => {
+      enemyProjectiles.push(new Projectile({
+        position: {
+          x: player2.position.x + player2.width / 2,
+          y: player2.position.y + player2.height
+        },
+        velocity: {
+          x: 0,
+          y: 5
+        },
+        color: player2.color
+      }))
+      // console.log(enemyProjectiles)
+    })
+
+
+    const keys = {
+      a: {
+        pressed: false
+      },
+      d: {
+        pressed: false
+      },
+      space: {
+        pressed: false
+      }
+    }
+
+    function animate() {
+      // player2.update()
+      c.clearRect(0, 0, canvas.width, canvas.height)
+      player.update()
+      if (player2) {
+        player2.draw()
+      }
+
+      projectiles.forEach(projectile => {
+        projectile.update()
+      })
+      enemyProjectiles.forEach(projectile => {
+        projectile.update()
+        // console.log(projectile)
+      })
+
+
+      if (keys.a.pressed) {
+        player.velocity.x = -5
+        socket.emit('updatePlayer', player.position)
+      } else if (keys.d.pressed) {
+        player.velocity.x = 5
+        socket.emit('updatePlayer', player.position)
+      } else {
+        player.velocity.x = 0
+      }
+      requestAnimationFrame(animate)
+    }
+
+    animate()
+
+
+    let shootInterval = null
+    // window.addEventListener('keydown', ({key}) => {
+    //   // console.log(key)
+
+    //   switch (key) {
+    //     case 'a':
+    //       keys.a.pressed = true
+    //       break;
+    //     case 'd':
+    //       keys.d.pressed = true
+    //       break;
+    //     case ' ':
+    //       // shootInterval = setInterval(() => {
+    //       const projectile = new Projectile({position: {x: player.position.x + player.width / 2, y: player.position.y}, velocity: {x: 0, y: -2}, color: player.color})
+    //       projectiles.push(projectile)
+    //       socket.emit('shoot', projectile)
+    //       // }, 1000)
+    //       break
+    //   }
+    // })
+
+    function runInterval() {
+      shootInterval = setInterval(function () {
+        if (keys.space.pressed) {
+          console.log(1)
+          console.log("Interval ishlayapti...");
+          const projectile = new Projectile({position: {x: player.position.x + player.width / 2, y: player.position.y}, velocity: {x: 0, y: -5}, color: player.color})
+          projectiles.push(projectile)
+          socket.emit('shoot', projectile)
+          console.log('keypress')
+        }
+      }, 200);
+    }
+
+    window.addEventListener('keydown', ({key}) => {
+      switch (key) {
+        case 'a':
+          keys.a.pressed = true
+          break;
+        case 'd':
+          keys.d.pressed = true
+          break;
+        case ' ':
+          keys.space.pressed = true
+          if(shootInterval === null) {
+            runInterval()
+          }
+          break
+      }
+    })
+
+    window.addEventListener('keyup', ({key}) => {
+      // console.log(key)
+
+      switch (key) {
+        case 'a':
+          keys.a.pressed = false
+          break;
+        case 'd':
+          keys.d.pressed = false
+          break;
+        case ' ':
+          clearInterval(shootInterval)
+          shootInterval = null
+          keys.space.pressed = false
+          break
+      }
+    })
+
+
+
+
+
+
+  </script>
+  <!-- <script src="../app.js"></script> -->
+</body>
+
+</html>
