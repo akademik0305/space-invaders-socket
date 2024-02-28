@@ -40,7 +40,7 @@
 
 
   <script>
-    const socket = io('http://localhost:3001')
+    const socket = io('https://space-invaders-socket.onrender.com/')
     socket.on('connection')
 
     socket.on('message', (data) => {
@@ -265,17 +265,14 @@
     function runInterval() {
       shootInterval = setInterval(function () {
         if (keys.space.pressed) {
-          console.log(1)
-          console.log("Interval ishlayapti...");
           const projectile = new Projectile({position: {x: player.position.x + player.width / 2, y: player.position.y}, velocity: {x: 0, y: -5}, color: player.color})
           projectiles.push(projectile)
           socket.emit('shoot', projectile)
-          console.log('keypress')
         }
       }, 200);
     }
 
-    window.addEventListener('keydown', ({key}) => {
+    window.addEventListener('keypress', ({key}) => {
       switch (key) {
         case 'a':
           keys.a.pressed = true
@@ -285,7 +282,7 @@
           break;
         case ' ':
           keys.space.pressed = true
-          if(shootInterval === null) {
+          if (shootInterval === null) {
             runInterval()
           }
           break
@@ -293,8 +290,7 @@
     })
 
     window.addEventListener('keyup', ({key}) => {
-      // console.log(key)
-
+      // console.log(key) 
       switch (key) {
         case 'a':
           keys.a.pressed = false
